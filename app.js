@@ -3,8 +3,10 @@ const mongoose = require("mongoose");
 const path = require("path");
 const usersRoutes = require("./routes/users");
 const saucesRoutes = require("./routes/sauces");
+require("dotenv").config();
+
 mongoose
-    .connect("mongodb+srv://admin:admin@piiquantedb.txoybyd.mongodb.net/?retryWrites=true&w=majority", { useNewUrlParser: true, useUnifiedTopology: true })
+    .connect(process.env.MONGOOSE, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log("Connexion à MongoDB réussie !"))
     .catch(() => console.log("Connexion à MongoDB échouée !"));
 const app = express();

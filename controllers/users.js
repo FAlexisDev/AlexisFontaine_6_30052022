@@ -1,20 +1,21 @@
 const Users = require("../models/Users");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-exports.signup = (req, res, next) => {
-    bcrypt
-        .hash(req.body.password, 10)
-        .then((hash) => {
-            const user = new Users({
-                email: req.body.email,
-                password: hash,
-                // + "Salt" -- (Pas dans le code)
-            });
-            user.save()
-                .then(() => res.status(201).json({ message: "Utilisateur créé ! " }))
-                .catch((error) => res.status(400).json({ error }));
-        })
-        .catch((error) => res.status(500).json({ error }));
+require("dotenv").config();
+exports.signup = async (req, res, next) => {
+    try {
+        const salt = await bcrypt.genSalt();
+        const hashedPassword = await bcrypt.hash(req.body.password, salt);
+        const user = new Users({
+            email: req.body.email,
+            password: hashedPassword,
+        });
+        user.save()
+            .then(() => res.status(201).json({ message: "Utilisateur créé ! " }))
+            .catch((error) => res.status(400).json({ error }));
+    } catch {
+        res.status(500).send();
+    }
 };
 
 exports.login = (req, res, next) => {
@@ -31,7 +32,7 @@ exports.login = (req, res, next) => {
                     }
                     res.status(200).json({
                         userId: user._id,
-                        token: jwt.sign({ userId: user._id }, "RANDOM_TOKEN_SECRET", { expiresIn: "24h" }),
+                        token: jwt.sign({ userId: user._id }, process.env.TOKEN, { expiresIn: "24h" }),
                     });
                 })
                 .catch((error) => res.status(500).json({ error }));
