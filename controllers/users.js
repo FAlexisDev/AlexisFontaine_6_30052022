@@ -1,20 +1,14 @@
 const Users = require("../models/Users");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const usersServices = require("../services/users");
 require("dotenv").config();
 exports.signup = async (req, res, next) => {
     try {
-        const salt = await bcrypt.genSalt();
-        const hashedPassword = await bcrypt.hash(req.body.password, salt);
-        const user = new Users({
-            email: req.body.email,
-            password: hashedPassword,
-        });
-        user.save()
-            .then(() => res.status(201).json({ message: "Utilisateur créé ! " }))
-            .catch((error) => res.status(400).json({ error }));
-    } catch {
-        res.status(500).send();
+        await usersServices.signup(req);
+        return res.status(201).json({ message: "Utilisateur créé ! " });
+    } catch (error) {
+        return res.status(400).json({ message: "Utilisateur non crée !", error });
     }
 };
 

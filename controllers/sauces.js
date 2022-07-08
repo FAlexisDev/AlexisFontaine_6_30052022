@@ -1,93 +1,68 @@
-const Sauces = require("../models/Sauces");
-
-exports.getSauces = (req, res, next) => {
-    Sauces.find()
-        .then((sauces) => res.status(200).json(sauces))
-        .catch((error) => res.status(400).json({ error }));
+const saucesServices = require("../services/sauces");
+exports.getSauces = async (req, res, next) => {
+    try {
+        const sauces = await saucesServices.getSauces();
+        return res.status(200).json(sauces);
+    } catch (error) {
+        return res.status(400).json({ error });
+    }
 };
 
-exports.getSauce = (req, res, next) => {
-    Sauces.findOne({ _id: req.params.id })
-        .then((sauce) => res.status(200).json(sauce))
-        .catch((error) => res.status(404).json({ error }));
+exports.getSauce = async (req, res, next) => {
+    const sauceId = req.params.id;
+    try {
+        const sauce = await saucesServices.getSauce({ _id: sauceId });
+        return res.status(200).json(sauce);
+    } catch (error) {
+        return res.status(404).json({ message: `Error while getting sauce : ${sauceId} `, error });
+    }
 };
 
-exports.createSauce = (req, res, next) => {
+exports.createSauce = async (req, res, next) => {
     const sauceObject = JSON.parse(req.body.sauce);
-    const sauce = new Sauces({
-        ...sauceObject,
-        imageUrl: `${req.protocol}://${req.get("host")}/images/${req.file.filename}`,
-        likes: 0,
-        dislikes: 0,
-        usersLiked: [],
-        usersDisliked: [],
-    });
+    const protocol = req.protocol;
+    const localhost = req.get("host");
+    const file = req.file;
 
-    sauce
-        .save()
-        .then(() => res.status(200).json({ message: "Sauce créée !" }))
-        .catch((error) => res.status(400).json({ error }));
+    try {
+        await saucesServices.createSauce(sauceObject, protocol, file, localhost);
+        return res.status(200).json({ message: "Sauce créée !" });
+    } catch (error) {
+        console.error(error);
+        return res.status(400).json({ message: "Failed to create sauce", error });
+    }
 };
 
-exports.modifySauce = (req, res, next) => {
-    const sauceObject = req.file
-        ? {
-              ...JSON.parse(req.body.sauce),
-              imageUrl: `${req.protocol}://${req.get("host")}/images/${req.file.filename}`,
-          }
-        : { ...req.body };
-    Sauces.updateOne({ _id: req.params.id }, { ...sauceObject })
-        .then(() => res.status(200).json({ message: "Sauce trouvée !" }))
-        .catch((error) => res.status(404).json({ error }));
+exports.modifySauce = async (req, res, next) => {
+    const { file, body, protocol } = req;
+    const sauce = req.body.sauce;
+    const id = req.params.id;
+    const localhost = req.get("host");
+
+    try {
+        await saucesServices.modifySauce(file, sauce, protocol, body, id, localhost);
+        return res.status(200).json({ message: "Sauce trouvée !" });
+    } catch (error) {
+        return res.status(404).json({ message: "Sauce non trouvée", error });
+    }
 };
 
-exports.deleteSauce = (req, res, next) => {
-    Sauces.deleteOne({ _id: req.params.id })
-        .then(() => res.status(200).json({ message: "Sauce supprimée !" }))
-        .catch((error) => res.status(400).json({ error }));
+exports.deleteSauce = async (req, res, next) => {
+    try {
+        await saucesServices.deleteSauce({ _id: req.params.id });
+        return res.status(200).json({ message: "Sauce supprimée !" });
+    } catch (error) {
+        return res.status(400).json({ message: "Sauce non trouvée", error });
+    }
 };
 
-exports.likeSauce = (req, res, next) => {
-    Sauces.findOne({ _id: req.params.id })
-        .then((sauce) => {
-            const likeStatus = req.body.like;
-            switch (likeStatus) {
-                case 1:
-                    sauce.likes += 1;
-                    sauce.usersLiked.push(req.body.userId);
-                    break;
-                case -1:
-                    sauce.dislikes += 1;
-                    sauce.usersDisliked.push(req.body.userId);
-                    break;
-
-                case 0:
-                    sauce.usersLiked = sauce.usersLiked.filter((user) => {
-                        if (user == req.body.userId) {
-                            sauce.likes -= 1;
-                        }
-                        return user != req.body.userId;
-                    });
-
-                    sauce.usersDisliked = sauce.usersDisliked.filter((user) => {
-                        if (user == req.body.userId) {
-                            sauce.dislikes -= 1;
-                        }
-                        return user != req.body.userId;
-                    });
-                    break;
-            }
-
-            sauce
-                .updateOne({
-                    _id: req.params.id,
-                    usersLiked: sauce.usersLiked,
-                    usersDisliked: sauce.usersDisliked,
-                    likes: sauce.likes,
-                    dislikes: sauce.dislikes,
-                })
-                .then(() => res.status(200).json({ message: "Like mise à jour" }))
-                .catch((error) => res.status(400).json({ error }));
-        })
-        .catch((error) => res.status(403).json({ error }));
+exports.likeSauce = async (req, res, next) => {
+    const { id } = req.params;
+    const { like, userId } = req.body;
+    try {
+        await saucesServices.likeSauce(id, like, userId);
+        res.status(200).json({ message: "Like mis à jours" });
+    } catch (error) {
+        res.status(403).json({ message: "Status de like non modifié", error });
+    }
 };
